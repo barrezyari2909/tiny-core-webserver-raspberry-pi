@@ -4,6 +4,13 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
+char *get_mime_type(char *path){
+	if(strstr(path, ".html")) return "text/html";
+	if(strstr(path, ".css")) return "text/css";
+	if(strstr(path, ".js")) return "application/javascript";
+	return "text/plain";
+}
+
 int main(int argc, char **argv) {
 	int port = 8000;
 	char buffer[1024];
@@ -22,19 +29,44 @@ int main(int argc, char **argv) {
 	
 	while(1) {
 		int client = accept(server_fd, NULL, NULL);
+		memset(buffer, 0, sizeof(buffer));
 		read(client,buffer, 1024);
-		FILE *f = fopen("index.html", "r");
+		char method[16], path[256];
+		sscanf(buffer, "%s %s", method, path);
+		
+		if(strcmp(path, "/") == 0){
+			strcpy(path, "/index.html");
+		}		
+		
+		char filepath [256];
+		sprintf(filepath, ".%s", path);
+
+		FILE *f = fopen(filepath, "rb");
 		if(f){
 			char content[4096];
-			int size = fread(content,1,4096,f);
-			fclose(f);
+			int size;
+
+			fseek(f, 0, SEEK_END);
+			int file_size = ftell(f);
+			rewind(f);
+
+			char *type = get_mime_type(path);			
 
 			char header[256];
-			sprintf(header, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n", size);
+			sprintf(header,
+				"HTTP/1.1 200 OK\r\n"
+				"Content-Length: %d\r\n"
+				"Content-Type: %s\r\n"
+				"\r\n",
+				file_size, type);
+
 			write(client, header, strlen(header));
-			write(client, content, size);
+			
+			while((size = fread(content, 1, sizeof(content), f)) > 0){
+				write(client, content, size);
+			}
 		} else{
-			char *msg="HTTP/1.1 404 Found\r\n\r\nFile not found";
+			char *msg="HTTP/1.1 404 Not Found\r\n\r\nFile not found";
 			write(client, msg, strlen(msg));
 		}
 
