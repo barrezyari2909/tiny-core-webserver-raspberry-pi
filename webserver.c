@@ -38,8 +38,8 @@ int main(int argc, char **argv) {
 			strcpy(path, "/index.html");
 		}		
 		
-		char filepath [256];
-		sprintf(filepath, ".%s", path);
+		char filepath [258];
+		snprintf(filepath, sizeof(filepath), ".%s", path);
 
 		FILE *f = fopen(filepath, "rb");
 		if(f){
